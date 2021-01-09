@@ -113,31 +113,42 @@ class Reversi{
   }
 
   tryPutPiece(x, y, turn, board){
+
     const samePiece = turn;
 
-    if(board[x][y] !== BLACK) return board;
+    if(board[x][y] !== BLANK) return board;
 
     //自分のコマとしてひっくり返すコマのリスト 置くコマも含む
-    const reverseArray = [[x, y]];
+    let reverseArray = [[x, y]];
 
-    for(let dx = -1; dx < 1; dx++){
-      for(let dy = -1; dy < 1; dy++){
+    for(let dx = -1; dx <= 1; dx++){
+      for(let dy = -1; dy <= 1; dy++){
         if(dx === 0 && dy === 0) continue;
         if(!this._isInBoard(x, y, dx, dy)) continue;
 
-        reverseArray.push(this._tryReverseDir(x, y, dx, dy, samePiece, board));
+        const items = this._tryReverseDir(x, y, dx, dy, samePiece, board);
+        logger.debug(items);
+        if(items.length){
+          reverseArray = reverseArray.concat(items);
+        }
+
       }
     }
 
+    logger.debug(reverseArray);
     //ひっくり返せない
     if(reverseArray.length <= 1){
       return board;
     }
 
+
+
     //コピー
     const nextBoard = this.copyBoard(board);
+    logger.debug("nextBoard" + visualizationBoard(nextBoard));
 
     reverseArray.forEach(pos => {
+
       nextBoard[pos[0]][pos[1]] = samePiece;
     })
 
@@ -184,7 +195,12 @@ class Reversi{
    * @returns {boolean}
    */
   canPut(x, y, turn = this.turn){
-    return this.board !== this.tryPutPiece(x, y, turn, this.board);
+    const compBoard = this.tryPutPiece(x, y, turn, this.board);
+
+    logger.debug("before" + visualizationBoard(this.board));
+    logger.debug("after" + visualizationBoard(compBoard));
+
+    return this.board !== compBoard;
   }
 
   /**
@@ -223,20 +239,32 @@ class Reversi{
     }
 
     logger.info(`turn: ${this.turn} (${turnMsg})`);
-    logger.info(this.board);
+
+    logger.info(visualizationBoard(this.board));
   }
 
 }
 
 const massToPos = (mass) => {
   return {
-    x: mass % 8,
-    y: Math.floor(mass / 8)
+    x: Math.floor(mass / 8),
+    y: mass % 8,
   }
 }
 
 const posToMass = (x, y) => {
-  return y*8 + x;
+  return x*8 + y;
+}
+
+const visualizationBoard = (board, eol = "\n") => {
+  const boardMsg =
+    encodeBoard(board)
+      .replace(/.{8}/g, eol + "$&")
+      .replace(/0/g, "x")
+      .replace(/1/g, "◯")
+      .replace(/2/g, "●");
+
+  return boardMsg;
 }
 
 const decodeBoard = (str) => {
@@ -251,20 +279,22 @@ const decodeBoard = (str) => {
       board[x][y] = parseInt(str.charAt(mass));
     }
   }
+  return board;
 }
 
 const encodeBoard = (board) => {
   let str = "";
 
-  for(let x = 0; x < 8; x++){
-    for(let y = 0; y < 8; y++){
+  //配列順とは逆
+  for(let y = 0; y < 8; y++){
+    for(let x = 0; x < 8; x++){
       str += board[x][y].toString();
     }
   }
   return str;
 }
 
-exports = {
+module.exports = {
   Reversi,
   massToPos,
   posToMass,
