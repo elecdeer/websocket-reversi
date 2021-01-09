@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>socket.io chat</title>
+<!--    <script src="/socket.io/socket.io.js"></script>-->
+    <script src="https://cdn.socket.io/socket.io-3.0.1.min.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+</head>
+<body>
+<ul id="messages"></ul>
+
+<p id="role"></p>
+<p id="black_player"></p>
+<p id="white_player"></p>
+<p id="game_turn"></p>
+<p id="board"></p>
+
+<form id="message_form" action="#">
+    <input id="input_x" autocomplete="off" placeholder="x:0-7"/>
+    <input id="input_y" autocomplete="off" placeholder="y:0-7"/>
+    <button>Send</button>
+</form>
+<p id="server_response"></p>
+
+
+<script>
+  const socket = io();
+
+  $(function(){
+    //部屋に入る
+    const roomId = "testRoom";
+    const playerId = `testPlayer-${Math.round(Math.random()*10000)}`;
+    socket.emit("join-room", roomId, playerId);
+
+
+    //ボタンを押したらコマを置く
+    $('#message_form').submit(function(){
+      const x = parseInt($('#input_x').val());
+      const y = parseInt($('#input_y').val());
+      console.log("send put-piece", x, y);
+      socket.emit("put-piece", x, y);
+      console.log("done");
+      return false;
+    });
+
+
+    socket.on("join-room-res", function(role){
+      console.log("join-room-res", role);
+
+      $("#role").text(`I am ${role}`);
+
+    });
+
+    socket.on("start-game", function(black, white){
+      console.log("start-game", black, white);
+
+      $("#black_player").text(`black: ${black}`);
+      $("#white_player").text(`white: ${white}`);
+
+    });
+
+    socket.on("put-piece-res", function(status){
+      console.log("put-piece-res", status);
+
+      $("#server_response").text(`${status}`);
+    });
+
+    socket.on("update-board", function(board, turn){
+      console.log("update-board", board, turn);
+
+
+      let turnMsg;
+      if(turn === 1){
+        turnMsg = "white";
+      }else if(turn === 2){
+        turnMsg = "black";
+      }else{
+        turnMsg = "end";
+      }
+      $("#game_turn").text(`turn: ${turnMsg}`);
+
+
+      //この辺は表示ようなので本質的ではなく、割とどうでも良い
+
+      const posToMass = (x, y) => {
+        return x*8 + y;
+      }
+
+      const decodeBoard = (str) => {
+        const board = (new Array(8)).fill(0).map(column => (new Array(8)).fill(0));
+        for(let x = 0; x < 8; x++){
+          for(let y = 0; y < 8; y++){
+            const mass = posToMass(x, y);
+            board[x][y] = parseInt(str.charAt(mass));
+          }
+        }
+        return board;
+      }
+      const encodeBoard = (board) => {
+        let str = "";
+
+        for(let x = 0; x < 8; x++){
+          for(let y = 0; y < 8; y++){
+            str += board[x][y].toString();
+          }
+        }
+        return str;
+      }
+
+      const transpose = a => a[0].map((_, c) => a.map(r => r[c]));
+
+      const boardMsg =
+        board
+          .replace(/.{8}/g, "<br>$&")
+          .replace(/0/g, "Ｘ")
+          .replace(/1/g, "◯")
+          .replace(/2/g, "●");
+
+
+      $("#board").html(`${boardMsg}`);
+
+    });
+
+
+
+  });
+
+  // $(function(){
+  //   $('#message_form').submit(function(){
+  //     socketio.emit('message', $('#input_msg').val());
+  //     $('#input_msg').val('');
+  //     return false;
+  //   });
+  // });
+</script>
+</body>
+</html>
