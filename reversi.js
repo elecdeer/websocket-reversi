@@ -56,6 +56,7 @@ class Reversi{
    * @param board
    */
   checkNextTurn(turn, board){
+    logger.debug(`checkNextTurn ${turn}`)
     const tempNextTurn = this._reversePiece(turn);
 
     //パスする
@@ -71,18 +72,22 @@ class Reversi{
   }
 
   _checkPass(piece, board){
+    const canPutPosList = [];
+
     //パスチェック
     for(let x = 0; x < 8; x++){
       for(let y = 0; y < 8; y++){
-        if(board[x][y] !== BLANK) return;
+        if(board[x][y] !== BLANK) continue;
 
         const triedBoard = this.tryPutPiece(x, y, piece, board);
         if(triedBoard !== board){//なんかしら置けた
-          return false;
+          canPutPosList.push([x, y]);
         }
       }
     }
-    return true;
+    logger.info(`check pass ${piece} -> canPutPosList:`);
+    logger.info(canPutPosList);
+    return canPutPosList.length === 0;
   }
 
   /**
@@ -102,7 +107,9 @@ class Reversi{
     this.history.push({
       count: this.countUp(),
       board: this.board,
-      turn: this.turn
+      turn: this.turn,
+      turnIndex: this.history.length,
+      putMass: posToMass(x, y),
     })
 
     return {
@@ -127,7 +134,7 @@ class Reversi{
         if(!this._isInBoard(x, y, dx, dy)) continue;
 
         const items = this._tryReverseDir(x, y, dx, dy, samePiece, board);
-        logger.debug(items);
+        // logger.debug(items);
         if(items.length){
           reverseArray = reverseArray.concat(items);
         }
@@ -135,7 +142,7 @@ class Reversi{
       }
     }
 
-    logger.debug(reverseArray);
+    // logger.debug(reverseArray);
     //ひっくり返せない
     if(reverseArray.length <= 1){
       return board;
@@ -148,7 +155,6 @@ class Reversi{
     logger.debug("nextBoard" + visualizationBoard(nextBoard));
 
     reverseArray.forEach(pos => {
-
       nextBoard[pos[0]][pos[1]] = samePiece;
     })
 

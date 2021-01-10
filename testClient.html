@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>socket.io chat</title>
+    <title>Reversi</title>
 <!--    <script src="/socket.io/socket.io.js"></script>-->
     <script src="https://cdn.socket.io/socket.io-3.0.1.min.js"></script>
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
@@ -22,15 +22,58 @@
 </form>
 <p id="server_response"></p>
 
+<!--
+作るべき点
+・オセロのボードをちゃんとhtmlタグで作る
+　　<table>使うのがいいかも
+　　jqueryを使って動的に生成する
+　　参考：https://develman.net/reversi-with-javascript-1/
+・マスのクリックでコマを置けるようにする
+・今どっちのターンか、自分は白黒どっちか、などの表示をもう少し整える
+　　
+
+-->
+
+
 
 <script>
   const socket = io();
 
+  /**
+   * "?hey=1&heey=2"の様なクエリ文字列をオブジェクトに変換
+   * @param queryStr
+   * @returns {{}}
+   */
+  const parseQuery = function(queryStr){
+    const query = queryStr.slice(1);
+    if(!query) return {};
+    return query.split("&").reduce((prev, current) => {
+      const split = current.split("=");
+      const key = split[0];
+      const value = split[1];
+      const next = {
+        ...prev
+      }
+      next[key] = value;
+      return next;
+    }, {});
+  }
+
+
   $(function(){
     //部屋に入る
-    const roomId = "testRoom";
-    const playerId = `testPlayer-${Math.round(Math.random()*10000)}`;
+    //roomIdはurlで示されているのでそこから取る
+    // const roomId = "testRoom";
+    const path = location.pathname;
+    const roomId = path.substr(path.lastIndexOf("/")+1);
+    console.log(`roomId: ${roomId}`);
+
+    //playerIdはクエリから取得
+    //無いならランダムなテストプレイヤー
+    const playerId = parseQuery(location.search)["player_id"] || `testPlayer-${Math.round(Math.random()*10000)}`;
+    console.log(`playerId: ${playerId}`);
     socket.emit("join-room", roomId, playerId);
+
 
 
     //ボタンを押したらコマを置く
@@ -38,12 +81,13 @@
       const x = parseInt($('#input_x').val());
       const y = parseInt($('#input_y').val());
       console.log("send put-piece", x, y);
+
+      //x, yの位置にコマを置くという操作を送信
       socket.emit("put-piece", x, y);
-      console.log("done");
       return false;
     });
 
-
+    //参加申請の返答受信
     socket.on("join-room-res", function(role){
       console.log("join-room-res", role);
 
@@ -51,6 +95,7 @@
 
     });
 
+    //ゲーム開始受信
     socket.on("start-game", function(black, white){
       console.log("start-game", black, white);
 
@@ -59,14 +104,17 @@
 
     });
 
+    //コマ置き申請の返答受信
     socket.on("put-piece-res", function(status){
       console.log("put-piece-res", status);
 
       $("#server_response").text(`${status}`);
     });
 
+    //盤面の更新受信
     socket.on("update-board", function(board, turn){
       console.log("update-board", board, turn);
+      //boardの表し方についてはScrapbox参照
 
 
       let turnMsg;
@@ -79,39 +127,9 @@
       }
       $("#game_turn").text(`turn: ${turnMsg}`);
 
-
-      //この辺は表示ようなので本質的ではなく、割とどうでも良い
-
-      const posToMass = (x, y) => {
-        return x*8 + y;
-      }
-
-      const decodeBoard = (str) => {
-        const board = (new Array(8)).fill(0).map(column => (new Array(8)).fill(0));
-        for(let x = 0; x < 8; x++){
-          for(let y = 0; y < 8; y++){
-            const mass = posToMass(x, y);
-            board[x][y] = parseInt(str.charAt(mass));
-          }
-        }
-        return board;
-      }
-      const encodeBoard = (board) => {
-        let str = "";
-
-        for(let x = 0; x < 8; x++){
-          for(let y = 0; y < 8; y++){
-            str += board[x][y].toString();
-          }
-        }
-        return str;
-      }
-
-      const transpose = a => a[0].map((_, c) => a.map(r => r[c]));
-
       const boardMsg =
         board
-          .replace(/.{8}/g, "<br>$&")
+          .replace(/.{8}/g, "<br>$&")//8文字ごとに区切る
           .replace(/0/g, "Ｘ")
           .replace(/1/g, "◯")
           .replace(/2/g, "●");
@@ -125,13 +143,6 @@
 
   });
 
-  // $(function(){
-  //   $('#message_form').submit(function(){
-  //     socketio.emit('message', $('#input_msg').val());
-  //     $('#input_msg').val('');
-  //     return false;
-  //   });
-  // });
 </script>
 </body>
 </html>
